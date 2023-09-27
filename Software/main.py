@@ -105,13 +105,15 @@ class SystemTrayIcon:
 class CommicationHard:
     def __init__(self):
         self.ser = None
-        self.audio_controller = AudioController("chrome.exe")
+        self.chrome_audio_controller = AudioController("chrome.exe")
+        self.firefox_audio_controller = AudioController("firefox.exe")
         self.action = ""
         self.vlm_val = 0
         self.pre_vlm_val = 0
         self.delta_vlm = 1/1023
         self.end_status = True
         self.theard = threading.Thread(target=self.run)
+        self.switch = ""
 
     def connect_serial(self):
         try:
@@ -135,6 +137,7 @@ class CommicationHard:
             print("Serial not found")
 
     def get_signal(self):
+        tmp_val = 0
         val_arduino = self.ser.readline()
         val_arduino = val_arduino.decode('utf-8')
         split_val = val_arduino.split(',')
@@ -143,7 +146,9 @@ class CommicationHard:
             self.action = split_val[0]
             self.pre_vlm_val = self.vlm_val
             # ボリューム値を取得
-            self.vlm_val = int(split_val[1].replace('\r\n', ''))
+            tmp_val = split_val[1].replace('\r\n', '')
+            self.switch, self.vlm_val = tmp_val.split(':')
+            self.vlm_val = int(self.vlm_val)
             self.vlm_val = math.floor(self.vlm_val * self.delta_vlm * 100) / 100
             
     def run(self):
@@ -167,7 +172,10 @@ class CommicationHard:
                     print("tct6ボタンが押されました")
                 # vlm_valの変更があった場合、処理を実行
                 if self.vlm_val != self.pre_vlm_val:
-                    self.audio_controller.set_volume(self.vlm_val)
+                    if self.switch == '#sw1':
+                        self.chrome_audio_controller.set_volume(self.vlm_val)
+                    elif self.switch == '#sw2':
+                        self.firefox_audio_controller.set_volume(self.vlm_val)
                 # 待機時間: 0.05秒
                 time.sleep(0.05)
             except KeyboardInterrupt:
